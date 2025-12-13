@@ -14,6 +14,8 @@ jobs:
 
       - name: Request manual activation file
         uses: game-ci/unity-activate@v2
+        env:
+          IMAGE: unityci/editor:ubuntu-2022.3.62f3-base-1
         with:
           unityVersion: 2022.3.62f3
 
