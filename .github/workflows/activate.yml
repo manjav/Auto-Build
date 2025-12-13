@@ -8,12 +8,12 @@ on:
 
 jobs:
   activation:
-    runs-on: ubuntu-20.04
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
       - name: Request manual activation file
-        uses: game-ci/unity-activate@v1
+        uses: game-ci/unity-activate@v2
         with:
           unityVersion: 2022.3.62f3
 
