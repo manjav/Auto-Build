@@ -34,15 +34,8 @@ public class Tile2D : MonoBehaviour
 
     public SpriteRenderer spriteRenderer;
     public Vector2Int pos;
-    public bool isPipe;         // pipe or container
+    // public bool isPipe;         // pipe or container
     public Tile2D left, right, up, down;
-
-    public void Init(Vector2Int pos, bool isPipe)
-    {
-        this.pos = pos;
-        this.isPipe = isPipe;
-    }
-
     public bool CheckFilled(Tile2D side)
     {
         return side == null || side.State == WaterState.Filled;

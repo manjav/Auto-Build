@@ -1,39 +1,28 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using System;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 public class WaterFillSystem : MonoBehaviour
 {
-    [SerializeField] float speed = 0.3f;
+    [SerializeField] float speed = 1f;
     [SerializeField] Tile2D tileSource;
-    readonly MinHeap<Tile2D> queue = new();
-    readonly HashSet<Vector2Int> visited = new();
-    static readonly Vector2Int[] dirctions =
-    {
-        Vector2Int.down,
-        Vector2Int.left,
-        Vector2Int.right,
-        Vector2Int.up,
-    };
-
 
     void Start()
     {
         var grid = BuildTiles2D();
-        StartCoroutine(Pour(grid[new Vector2Int(3, 0)]));
+        StartCoroutine(Pour(grid[new(3, 0)]));
     }
 
     public Dictionary<Vector2Int, Tile2D> BuildTiles2D()
     {
         var grid = new Dictionary<Vector2Int, Tile2D>();
 
-        void Add(int x, int y, bool isPipe)
+        void Add(int x, int y)
         {
-            var pos = new Vector2Int(x, y);
-            var tile = Instantiate(tileSource, new Vector3(x, y, 0), Quaternion.identity, transform);
-            tile.Init(pos, isPipe);
-            grid[pos] = tile;
+            var tile = Instantiate(tileSource, new Vector3(x - 3, y, 0), Quaternion.identity, transform);
+            tile.pos = new Vector2Int(x, y);
+            grid[tile.pos] = tile;
         }
         List<Vector3Int> pipePositions = new()
         {
@@ -86,20 +75,20 @@ public class WaterFillSystem : MonoBehaviour
             new (9, 5),
             new (9, 6),
             new (9, 7),
-            new (8, 8),
+            new (8, 8,1),
             new (9, 8),
             new (10,8, 1),
-            new (8, 9),
+            new (8, 9, 1),
             new (9, 9),
             new (10, 9, 1),
-            new (8, 10),
+            new (8, 10, 1),
             new (9, 10),
             new (10,10, 1),
         };
 
         foreach (var item in pipePositions)
         {
-            Add(item.x, -item.y, item.z == 1 ? false : true);
+            Add(item.x, -item.y);
         }
 
         foreach (var item in grid)
@@ -118,72 +107,51 @@ public class WaterFillSystem : MonoBehaviour
         return grid;
     }
 
-    public void StartFill(Dictionary<Vector2Int, Tile2D> grid, Vector2Int source) => StartCoroutine(FillRoutine(grid, source));
-
-    IEnumerator FillRoutine(Dictionary<Vector2Int, Tile2D> grid, Vector2Int source)
-    {
-        if (!grid.ContainsKey(source))
-            yield break;
-
-        queue.Push(grid[source], grid[source].pos.y);
-
-        while (queue.Count > 0)
-        {
-            Tile2D tile = queue.Pop();
-            if (visited.Contains(tile.pos))
-                continue;
-
-            visited.Add(tile.pos);
-            tile.State = WaterState.Pouring;
-            yield return new WaitForSeconds(0.1f);
-
-            // 🔽 Gravity-aware expansion
-            foreach (var d in dirctions)
-            {
-                Vector2Int nPos = tile.pos + d;
-                if (!grid.ContainsKey(nPos)) continue;
-
-                Tile2D n = grid[nPos];
-                if (!n.isPipe || visited.Contains(nPos)) continue;
-                queue.Push(n, n.pos.y);
-            }
-        }
-    }
-
     IEnumerator Pour(Tile2D tile)
     {
         if (tile == null)
             yield break;
 
-        // if (tile.CheckFilled(tile.down))
-        // {
-        //     StartCoroutine(Fill(tile));
-        //     yield break;
-        // }
-        // if(tile.State == WaterState.Filled)
-        //     yield break;
         if (tile.State == WaterState.Empty)
         {
             tile.State = WaterState.Pouring;
-            if (tile.left.isPipe) StartCoroutine(Pour(tile.left));
-            if (tile.right.isPipe) StartCoroutine(Pour(tile.right));
         }
 
         yield return new WaitForSeconds(speed);
-        StartCoroutine(Pour(tile.down));
+        if (tile.CheckFilled(tile.down))
+        {
+            yield return StartCoroutine(Fill(tile));
+        }
+        else
+        {
+            yield return StartCoroutine(Pour(tile.down));
+        }
+
         yield return null;
     }
 
-    IEnumerator Fill(Tile2D tile)
+    IEnumerator Fill(Tile2D tile, bool returning = false)
     {
         if (tile == null || tile.State == WaterState.Filled)
         {
             yield break;
         }
         tile.State = WaterState.Filled;
-        StartCoroutine(Pour(tile.left));
-        StartCoroutine(Pour(tile.right));
         yield return new WaitForSeconds(speed);
-        StartCoroutine(Pour(tile.up));
+        if (tile.CheckFilled(tile.down))
+        {
+            StartCoroutine(Fill(tile.left));
+            yield return StartCoroutine(Fill(tile.right));
+            if(tile.CheckFilled(tile.left) && tile.CheckFilled(tile.right))
+            {
+                yield return StartCoroutine(Fill(tile.up, true));
+            }
+        }
+        else
+        {
+            yield return StartCoroutine(Pour(tile.down));
+
+        }
+        yield break;
     }
 }
