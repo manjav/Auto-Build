@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 public enum WaterState
 {
@@ -32,13 +33,18 @@ public class Tile2D : MonoBehaviour
     }
 
     public SpriteRenderer spriteRenderer;
-    public Vector2Int Pos;
-    public bool IsPipe;         // pipe or container
-
+    public Vector2Int pos;
+    public bool isPipe;         // pipe or container
+    public Tile2D left, right, up, down;
 
     public void Init(Vector2Int pos, bool isPipe)
     {
-        Pos = pos;
-        IsPipe = isPipe;
+        this.pos = pos;
+        this.isPipe = isPipe;
+    }
+
+    public bool CheckFilled(Tile2D side)
+    {
+        return side == null || side.State == WaterState.Filled;
     }
 }
