@@ -1,0 +1,68 @@
+name: Build iOS & Upload to TestFlight (Unity Personal)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---- UNITY BUILD ----
+      - name: Build iOS with Unity Personal
+        uses: game-ci/unity-builder@v4
+        with:
+          targetPlatform: iOS
+          unityVersion: 6000.0.58f2
+
+      - name: Prepare Xcode project
+        run: |
+          mkdir -p build-ios
+          cp -R build/iOS/* build-ios/
+
+      # ---- Install Fastlane ----
+      - name: Install Fastlane
+        run: sudo gem install fastlane
+
+      # ---- Create Fastlane lane ----
+      - name: Create Fastlane File
+        run: |
+          mkdir -p fastlane
+          cat > fastlane/Fastfile << 'EOF'
+          default_platform(:ios)
+
+          platform :ios do
+            lane :upload do
+              build_app(
+                workspace: "Unity-iPhone.xcworkspace",
+                scheme: "Unity-iPhone",
+                export_method: "app-store"
+              )
+              upload_to_testflight
+            end
+          end
+          EOF
+
+      # ---- Signing ----
+      - name: Install provisioning profile
+        run: |
+          echo "${IOS_PROVISIONING_PROFILE}" | base64 --decode > profile.mobileprovision
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+
+      - name: Write Apple API Key
+        run: echo "${IOS_PRIVATE_KEY}" > AuthKey.p8
+
+      # ---- Build .ipa & Upload TestFlight ----
+      - name: Build & Upload
+        run: |
+          cd build-ios
+          fastlane ios upload
+        env:
+          APP_STORE_CONNECT_API_KEY_KEY_ID: ${{ secrets.IOS_KEY_ID }}
+          APP_STORE_CONNECT_API_KEY_ISSUER_ID: ${{ secrets.IOS_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY: ${{ secrets.IOS_PRIVATE_KEY }}
