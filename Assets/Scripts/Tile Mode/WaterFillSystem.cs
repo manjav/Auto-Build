@@ -1,7 +1,6 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using System.Runtime.InteropServices.WindowsRuntime;
 
 public class WaterFillSystem : MonoBehaviour
 {
@@ -11,7 +10,7 @@ public class WaterFillSystem : MonoBehaviour
     void Start()
     {
         var grid = BuildTiles2D();
-        StartCoroutine(Pour(grid[new(3, 0)]));
+        StartCoroutine(Pour(null, grid[new(3, 0)]));
     }
 
     public Dictionary<Vector2Int, Tile2D> BuildTiles2D()
@@ -107,24 +106,31 @@ public class WaterFillSystem : MonoBehaviour
         return grid;
     }
 
-    IEnumerator Pour(Tile2D tile)
+    bool IsWallOrFilled(Tile2D source, Tile2D side)
     {
-        if (tile == null)
+        return side == null || side.State == WaterState.Filled || source.source == side;
+    }
+
+    IEnumerator Pour(Tile2D source, Tile2D tile)
+    {
+        if (tile == null || tile.State != WaterState.Empty)
             yield break;
 
-        if (tile.State == WaterState.Empty)
-        {
-            tile.State = WaterState.Pouring;
-        }
-
+        tile.source = source;
+        tile.State = WaterState.Pouring;
         yield return new WaitForSeconds(speed);
-        if (tile.CheckFilled(tile.down))
+        if (!IsWallOrFilled(tile, tile.down))
         {
-            yield return StartCoroutine(Fill(tile));
+            yield return StartCoroutine(Pour(tile, tile.down));
         }
         else
         {
-            yield return StartCoroutine(Pour(tile.down));
+            StartCoroutine(Pour(tile, tile.left));
+            yield return StartCoroutine(Pour(tile, tile.right));
+            if (IsWallOrFilled(tile, tile.left) && IsWallOrFilled(tile, tile.right))
+            {
+                yield return StartCoroutine(Fill(tile));
+            }
         }
 
         yield return null;
@@ -133,24 +139,22 @@ public class WaterFillSystem : MonoBehaviour
     IEnumerator Fill(Tile2D tile, bool returning = false)
     {
         if (tile == null || tile.State == WaterState.Filled)
-        {
             yield break;
-        }
+
         tile.State = WaterState.Filled;
         yield return new WaitForSeconds(speed);
-        if (tile.CheckFilled(tile.down))
+        if (IsWallOrFilled(tile, tile.down))
         {
             StartCoroutine(Fill(tile.left));
             yield return StartCoroutine(Fill(tile.right));
-            if(tile.CheckFilled(tile.left) && tile.CheckFilled(tile.right))
+            if (IsWallOrFilled(tile, tile.left) && IsWallOrFilled(tile, tile.right))
             {
                 yield return StartCoroutine(Fill(tile.up, true));
             }
         }
         else
         {
-            yield return StartCoroutine(Pour(tile.down));
-
+            yield return StartCoroutine(Pour(tile, tile.down));
         }
         yield break;
     }
