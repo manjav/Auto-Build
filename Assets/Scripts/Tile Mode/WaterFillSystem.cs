@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 public class WaterFillSystem : MonoBehaviour
 {
-    [SerializeField] float speed = 0.3f;
+    readonly float speed = 0.2f;
     [SerializeField] Tile2D tileSource;
     readonly Dictionary<int, List<Tile2D>> rows = new();
 
@@ -70,6 +70,17 @@ public class WaterFillSystem : MonoBehaviour
             new (3, 14, 1),
             new (4, 14),
             new (5, 14, 1),
+            new (4+1, 15),
+            new (4+1, 16),
+            new (5+1,16 ),
+            new (6+1,16 ),
+            new (7+1,16 ),
+            new (9,16),
+            new (9, 15),
+            new (9, 14),
+            new (9, 13),
+            new (9, 12),
+            new (9, 11),
             new (7, 5),
             new (8, 5),
             new (9, 5),
@@ -119,7 +130,7 @@ public class WaterFillSystem : MonoBehaviour
 
         tile.source = source;
         tile.State = WaterState.Pouring;
-        yield return new WaitForSeconds(speed / 10);
+        yield return new WaitForSeconds(speed / 2);
         if (!IsWallOrFilled(tile, tile.down))
         {
             yield return StartCoroutine(Pour(tile, tile.down));
@@ -139,7 +150,7 @@ public class WaterFillSystem : MonoBehaviour
 
     IEnumerator HalfFill(Tile2D tile)
     {
-        if (tile == null || tile.State == WaterState.HalfFilled)
+        if (tile == null || tile.State >= WaterState.HalfFilled)
             yield break;
 
         tile.State = WaterState.HalfFilled;
@@ -151,13 +162,6 @@ public class WaterFillSystem : MonoBehaviour
         {
             yield return StartCoroutine(Pour(tile, tile.down));
         }
-        // else
-        // {
-        // if (IsWallOrFilled(tile, tile.left) && IsWallOrFilled(tile, tile.right))
-        // {
-        //     yield return StartCoroutine(Fill(tile.up, true));
-        // }
-        // }
         yield break;
     }
 
@@ -196,7 +200,7 @@ public class WaterFillSystem : MonoBehaviour
 
         tile.State = WaterState.Filled;
         if (tile.up != null && tile.up.State == WaterState.HalfFilled)
-            {
+        {
             AddToRow(tile.up);
         }
         else
