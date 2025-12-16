@@ -4,8 +4,9 @@ using System.Collections.Generic;
 
 public class WaterFillSystem : MonoBehaviour
 {
-    [SerializeField] float speed = 1f;
+    [SerializeField] float speed = 0.3f;
     [SerializeField] Tile2D tileSource;
+    readonly Dictionary<int, List<Tile2D>> rows = new();
 
     void Start()
     {
@@ -108,7 +109,7 @@ public class WaterFillSystem : MonoBehaviour
 
     bool IsWallOrFilled(Tile2D source, Tile2D side)
     {
-        return side == null || side.State == WaterState.Filled || source.source == side;
+        return side == null || side.State >= WaterState.Filled || source.source == side;
     }
 
     IEnumerator Pour(Tile2D source, Tile2D tile)
@@ -118,7 +119,7 @@ public class WaterFillSystem : MonoBehaviour
 
         tile.source = source;
         tile.State = WaterState.Pouring;
-        yield return new WaitForSeconds(speed);
+        yield return new WaitForSeconds(speed / 10);
         if (!IsWallOrFilled(tile, tile.down))
         {
             yield return StartCoroutine(Pour(tile, tile.down));
@@ -129,12 +130,64 @@ public class WaterFillSystem : MonoBehaviour
             yield return StartCoroutine(Pour(tile, tile.right));
             if (IsWallOrFilled(tile, tile.left) && IsWallOrFilled(tile, tile.right))
             {
-                yield return StartCoroutine(Fill(tile));
+                yield return StartCoroutine(HalfFill(tile));
             }
         }
 
         yield return null;
     }
+
+    IEnumerator HalfFill(Tile2D tile)
+    {
+        if (tile == null || tile.State == WaterState.HalfFilled)
+            yield break;
+
+        tile.State = WaterState.HalfFilled;
+        AddToRow(tile);
+        StartCoroutine(HalfFill(tile.left));
+        yield return StartCoroutine(HalfFill(tile.right));
+        yield return new WaitForSeconds(speed);
+        if (!IsWallOrFilled(tile, tile.down))
+        {
+            yield return StartCoroutine(Pour(tile, tile.down));
+        }
+        // else
+        // {
+        // if (IsWallOrFilled(tile, tile.left) && IsWallOrFilled(tile, tile.right))
+        // {
+        //     yield return StartCoroutine(Fill(tile.up, true));
+        // }
+        // }
+        yield break;
+    }
+
+    void AddToRow(Tile2D tile)
+    {
+        if (rows.ContainsKey(tile.pos.y))
+        {
+            StopCoroutine(FindLeakInRow(rows[tile.pos.y]));
+        }
+        else
+        {
+            rows[tile.pos.y] = new List<Tile2D>();
+        }
+        rows[tile.pos.y].Add(tile);
+        StartCoroutine(FindLeakInRow(rows[tile.pos.y]));
+    }
+
+    IEnumerator FindLeakInRow(List<Tile2D> row)
+    {
+        yield return new WaitForSeconds(speed);
+        foreach (var tile in row)
+        {
+            if (!IsWallOrFilled(tile, tile.down)) yield break;
+        }
+        foreach (var tile in row)
+        {
+            StartCoroutine(Fill(tile));
+        }
+    }
+
 
     IEnumerator Fill(Tile2D tile, bool returning = false)
     {
@@ -142,19 +195,13 @@ public class WaterFillSystem : MonoBehaviour
             yield break;
 
         tile.State = WaterState.Filled;
-        yield return new WaitForSeconds(speed);
-        if (IsWallOrFilled(tile, tile.down))
-        {
-            StartCoroutine(Fill(tile.left));
-            yield return StartCoroutine(Fill(tile.right));
-            if (IsWallOrFilled(tile, tile.left) && IsWallOrFilled(tile, tile.right))
+        if (tile.up != null && tile.up.State == WaterState.HalfFilled)
             {
-                yield return StartCoroutine(Fill(tile.up, true));
-            }
+            AddToRow(tile.up);
         }
         else
         {
-            yield return StartCoroutine(Pour(tile, tile.down));
+            StartCoroutine(HalfFill(tile.up));
         }
         yield break;
     }

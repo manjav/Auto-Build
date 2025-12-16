@@ -3,7 +3,8 @@ public enum WaterState
 {
     Empty,
     Pouring,
-    Filled
+    HalfFilled,
+    Filled,
 }
 
 public class Tile2D : MonoBehaviour
@@ -24,8 +25,11 @@ public class Tile2D : MonoBehaviour
                 case WaterState.Pouring:
                     spriteRenderer.color = Color.cyan;
                     break;
-                case WaterState.Filled:
+                case WaterState.HalfFilled:
                     spriteRenderer.color = Color.blue;
+                    break;
+                case WaterState.Filled:
+                    spriteRenderer.color = Color.blue * 0.5f;
                     break;
             }
         }
@@ -33,6 +37,6 @@ public class Tile2D : MonoBehaviour
 
     public SpriteRenderer spriteRenderer;
     public Vector2Int pos;
-    // public bool isPipe;         // pipe or container
     public Tile2D left, right, up, down, source;
+    public override string ToString() => $"Tile2D({pos.x}, {pos.y} State: {state})";
 }
